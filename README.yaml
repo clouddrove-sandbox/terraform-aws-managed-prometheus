@@ -5,13 +5,13 @@
 #
 
 # Name of this project
-name: Terraform AWS Managed Service Prometheus
+name: Terraform AWS Managed Prometheus
 
 # License of this project
 license: "APACHE"
 
 # Canonical GitHub repo
-github_repo: clouddrove/terraform-aws-managed-service-prometheus
+github_repo: clouddrove/terraform-aws-managed-prometheus
 
 # Badges to display
 badges:

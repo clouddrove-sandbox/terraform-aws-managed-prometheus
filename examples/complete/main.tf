@@ -6,8 +6,8 @@ module "prometheus" {
   source = "../.."
 
   workspace_alias = "complete-example-workspace"
-  name            = "complete-amp"
-  environment     = "prod"
+  name            = "clouddrove-prometheus"
+  environment     = "test"
 
   logging_configuration = {
     create_log_group = true
@@ -16,12 +16,6 @@ module "prometheus" {
   retention_period_in_days = 60
   create_alert_manager     = true
   create_resource_policy   = true
-
-  tags = {
-    Environment = "prod"
-    Terraform   = "true"
-    Project     = "complete-example"
-  }
 
   rule_group_namespaces = {
     example = {

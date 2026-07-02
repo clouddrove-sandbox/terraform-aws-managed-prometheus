@@ -6,14 +6,8 @@ module "prometheus" {
   source = "../.."
 
   workspace_alias = "example-workspace"
-  name            = "example-amp"
-  environment     = "dev"
-
-  tags = {
-    Environment = "dev"
-    Terraform   = "true"
-    Project     = "example"
-  }
+  name            = "clouddrove-prometheus"
+  environment     = "test"
 
   rule_group_namespaces = {
     example = {

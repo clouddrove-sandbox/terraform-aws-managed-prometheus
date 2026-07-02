@@ -1,0 +1,120 @@
+---
+#
+# This is the canonical configuration for the `README.md`
+# Run `make readme` to rebuild the `README.md`
+#
+
+# Name of this project
+name: Terraform AWS Managed Prometheus
+
+# License of this project
+license: "APACHE"
+
+# Canonical GitHub repo
+github_repo: clouddrove/terraform-aws-managed-prometheus
+
+# Badges to display
+badges:
+  - name: "Latest Release"
+    image: "https://img.shields.io/github/release/clouddrove/terraform-aws-managed-prometheus.svg"
+    url: "https://github.com/clouddrove/terraform-aws-managed-prometheus/releases/latest"
+  - name: "tfsec"
+    image: "https://github.com/clouddrove/terraform-aws-managed-prometheus/actions/workflows/tfsec.yml/badge.svg"
+    url: "https://github.com/clouddrove/terraform-aws-managed-prometheus/actions/workflows/tfsec.yml"
+  - name: "Licence"
+    image: "https://img.shields.io/badge/License-APACHE-blue.svg"
+    url: "LICENSE.md"
+  - name: "Changelog"
+    image: "https://img.shields.io/badge/Changelog-blue"
+    url: "CHANGELOG.md"
+
+prerequesties:
+  - name: Terraform
+    url: https://learn.hashicorp.com/terraform/getting-started/install.html
+    version: ">= 1.10.0"
+
+providers:
+  - name: aws
+    url: https://aws.amazon.com/
+    version: ">= 5.80.0"
+
+module_dependencies:
+  - name: Labels Module
+    url: https://github.com/clouddrove/terraform-aws-labels
+    description: Provides resource tagging.
+
+#  description of this project
+description: |-
+  Terraform module to create an Amazon Managed Prometheus workspace on AWS along with its IAM role, SAML configuration, license association, API keys, service accounts and optional VPC security group.
+
+# How to use this project
+# yamllint disable rule:line-length
+usage: |-
+  Here are some examples of how you can use this module in your inventory structure:
+  ### Basic Example
+  ```hcl
+      module "prometheus" {
+        source = "../.."
+
+        workspace_alias = "example-workspace"
+        name            = "example-amp"
+        environment     = "dev"
+
+        tags = {
+          Environment = "dev"
+          Terraform   = "true"
+          Project     = "example"
+        }
+
+        rule_group_namespaces = {
+          example = {
+            name = "example-rulegroup"
+            data = <<-EOT
+            groups:
+              - name: example
+                rules:
+                  - record: job:http_inprogress_requests:sum
+                    expr: sum by (job) (http_inprogress_requests)
+            EOT
+          }
+        }
+      }
+  ```
+
+  ### Complete Example
+  ```hcl
+      module "prometheus" {
+        source = "../.."
+
+        workspace_alias = "complete-example-workspace"
+        name            = "complete-amp"
+        environment     = "prod"
+
+        logging_configuration = {
+          create_log_group = true
+        }
+
+        retention_period_in_days = 60
+        create_alert_manager     = true
+        create_resource_policy   = true
+
+        tags = {
+          Environment = "prod"
+          Terraform   = "true"
+          Project     = "complete-example"
+        }
+
+        rule_group_namespaces = {
+          example = {
+            name = "example-rulegroup"
+            data = <<-EOT
+            groups:
+              - name: example
+                rules:
+                  - record: job:http_inprogress_requests:sum
+                    expr: sum by (job) (http_inprogress_requests)
+            EOT
+          }
+        }
+      }
+  ```

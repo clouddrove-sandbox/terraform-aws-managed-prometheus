@@ -14,20 +14,6 @@ module "labels" {
   extra_tags  = var.tags
 }
 
-data "aws_caller_identity" "current" {
-  count = local.create_resource_policy ? 1 : 0
-}
-
-data "aws_partition" "current" {
-  count = local.create_resource_policy ? 1 : 0
-}
-
-data "aws_region" "current" {
-  count = local.create_resource_policy ? 1 : 0
-
-  region = var.region
-}
-
 locals {
   partition  = try(data.aws_partition.current[0].partition, "aws")
   account_id = try(data.aws_caller_identity.current[0].account_id, "")
@@ -37,6 +23,8 @@ locals {
 
   # Since we are accepting externally created workspaces, we need to re-construct the ARN for the policy
   workspace_arn = var.enabled && var.create_workspace ? aws_prometheus_workspace.this[0].arn : "arn:${local.partition}:aps:${local.region}:${local.account_id}:workspace/${var.workspace_id}"
+  create_resource_policy = var.enabled && var.create_workspace && var.create_resource_policy
+  log_group_name = coalesce(var.cloudwatch_log_group_name, "/aws/prometheus/${coalesce(var.workspace_alias, module.labels.id, "workspace")}")
 }
 
 ##-----------------------------------------------------------------------------
@@ -89,106 +77,6 @@ resource "aws_prometheus_workspace_configuration" "this" {
   }
 }
 
-##-----------------------------------------------------------------------------
-## Creates a resource policy controlling access to the workspace.
-##-----------------------------------------------------------------------------
-data "aws_service_principal" "grafana" {
-  count = local.create_resource_policy ? 1 : 0
-
-  region       = var.region
-  service_name = "grafana"
-}
-
-locals {
-  create_resource_policy = var.enabled && var.create_workspace && var.create_resource_policy
-}
-
-data "aws_iam_policy_document" "resource_policy" {
-  count = local.create_resource_policy ? 1 : 0
-
-  dynamic "statement" {
-    # Default permissions if custom permissions are not provided
-    for_each = var.resource_policy_statements == null ? [1] : []
-
-    content {
-      sid = "DefaultAccountReadWrite"
-      principals {
-        type        = "AWS"
-        identifiers = [data.aws_caller_identity.current[0].account_id]
-      }
-      actions = [
-        "aps:RemoteWrite",
-        "aps:QueryMetrics",
-        "aps:GetSeries",
-        "aps:GetLabels",
-        "aps:GetMetricMetadata",
-      ]
-      resources = [local.workspace_arn]
-    }
-  }
-
-  dynamic "statement" {
-    # Default permissions if custom permissions are not provided
-    for_each = var.resource_policy_statements == null ? [1] : []
-
-    content {
-      sid = "DefaultGrafanaRead"
-      principals {
-        type        = "Service"
-        identifiers = [data.aws_service_principal.grafana[0].name]
-      }
-      actions = [
-        "aps:QueryMetrics",
-        "aps:GetSeries",
-        "aps:GetLabels",
-        "aps:GetMetricMetadata",
-      ]
-      resources = [local.workspace_arn]
-    }
-  }
-
-  dynamic "statement" {
-    for_each = var.resource_policy_statements != null ? var.resource_policy_statements : {}
-
-    content {
-      sid           = try(coalesce(statement.value.sid, statement.key))
-      actions       = statement.value.actions
-      not_actions   = statement.value.not_actions
-      effect        = statement.value.effect
-      resources     = coalescelist(statement.value.resources, [local.workspace_arn])
-      not_resources = statement.value.not_resources
-
-      dynamic "principals" {
-        for_each = statement.value.principals != null ? statement.value.principals : []
-
-        content {
-          type        = principals.value.type
-          identifiers = principals.value.identifiers
-        }
-      }
-
-      dynamic "not_principals" {
-        for_each = statement.value.not_principals != null ? statement.value.not_principals : []
-
-        content {
-          type        = not_principals.value.type
-          identifiers = not_principals.value.identifiers
-        }
-      }
-
-      dynamic "condition" {
-        for_each = statement.value.condition != null ? statement.value.condition : []
-
-        content {
-          test     = condition.value.test
-          values   = condition.value.values
-          variable = condition.value.variable
-        }
-      }
-    }
-  }
-}
-
 resource "aws_prometheus_resource_policy" "this" {
   count = local.create_resource_policy ? 1 : 0
 
@@ -201,9 +89,6 @@ resource "aws_prometheus_resource_policy" "this" {
 ##-----------------------------------------------------------------------------
 ## Creates a CloudWatch log group for workspace logging.
 ##-----------------------------------------------------------------------------
-locals {
-  log_group_name = coalesce(var.cloudwatch_log_group_name, "/aws/prometheus/${coalesce(var.workspace_alias, module.labels.id, "workspace")}")
-}
 
 resource "aws_cloudwatch_log_group" "this" {
   count = var.enabled && var.create_workspace && try(coalesce(var.logging_configuration.create_log_group), true) ? 1 : 0
